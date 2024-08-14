@@ -161,9 +161,17 @@ public class OkexAdapters {
   private static String adaptTradeMode(Instrument instrument, String accountLevel) {
     if (accountLevel.equals("3") || accountLevel.equals("4")) {
       return "cross";
-    } else {
-      return (instrument instanceof CurrencyPair) ? "cash" : "cross";
+    } else if (instrument instanceof OkexFuturesContract) {
+      switch (((OkexFuturesContract) instrument).getTradeMode()) {
+        case ISOLATED:
+          return "isolated";
+        case CROSS:
+          return "cross";
+        default:
+          return "cash";
+      }
     }
+    return (instrument instanceof CurrencyPair) ? "cash" : "cross";
   }
 
   public static OkexOrderRequest adaptOrder(
