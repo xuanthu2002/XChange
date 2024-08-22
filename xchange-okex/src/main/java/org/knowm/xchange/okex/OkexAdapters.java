@@ -203,6 +203,34 @@ public class OkexAdapters {
         okexPublicOrder.getVolume(), okexPublicOrder.getPrice(), instrument, orderType,timestamp);
   }
 
+  public static OkexOrderRequest adaptOrder(
+          StopOrder order, ExchangeMetaData exchangeMetaData, String accountLevel) {
+    OkexOrderRequest orderRequest = OkexOrderRequest.builder()
+            .instrumentId(adaptInstrument(order.getInstrument()))
+            .tradeMode(adaptTradeMode(order.getInstrument(), accountLevel))
+            .side(order.getType() == Order.OrderType.BID ? "buy" : "sell")
+            .posSide(null)
+            .clientOrderId(order.getUserReference())
+            .reducePosition(order.hasFlag(OkexOrderFlags.REDUCE_ONLY))
+            .orderType("conditional")
+            .amount(convertVolumeToContractSize(order, exchangeMetaData))
+            .build();
+    if (order.getIntention().equals(StopOrder.Intention.TAKE_PROFIT)) {
+      orderRequest.setTpTriggerPrice(order.getStopPrice());
+      orderRequest.setTpOrderPrice(order.getLimitPrice() != null ? order.getLimitPrice() : BigDecimal.valueOf(-1));
+    } else if (order.getIntention().equals(StopOrder.Intention.STOP_LOSS)) {
+      if (order.getTrailValue() != null) {
+        orderRequest.setOrderType("move_order_stop");
+        orderRequest.setCallbackSpread(order.getTrailValue());
+      }
+      else {
+        orderRequest.setSlTriggerPrice(order.getStopPrice());
+        orderRequest.setSlOrderPrice(order.getLimitPrice() != null ? order.getLimitPrice() : BigDecimal.valueOf(-1));
+      }
+    }
+    return orderRequest;
+  }
+
   public static OrderBook adaptOrderBook(
       List<OkexOrderbook> okexOrderbooks, Instrument instrument) {
     List<LimitOrder> asks = new ArrayList<>();

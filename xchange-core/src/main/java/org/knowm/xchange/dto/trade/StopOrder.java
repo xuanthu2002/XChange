@@ -27,7 +27,8 @@ public class StopOrder extends Order implements Comparable<StopOrder> {
 
   public enum Intention {
     STOP_LOSS,
-    TAKE_PROFIT
+    TAKE_PROFIT,
+    TRAILING_STOP
   }
 
   /** The stop price */

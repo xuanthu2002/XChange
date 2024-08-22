@@ -1,22 +1,12 @@
 package org.knowm.xchange.okex.service;
 
-import static org.knowm.xchange.okex.OkexAdapters.*;
-
 import jakarta.ws.rs.NotSupportedException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.knowm.xchange.client.ResilienceRegistries;
 import org.knowm.xchange.derivative.FuturesContract;
 import org.knowm.xchange.derivative.OptionsContract;
 import org.knowm.xchange.dto.Order;
 import org.knowm.xchange.dto.account.OpenPositions;
-import org.knowm.xchange.dto.trade.LimitOrder;
-import org.knowm.xchange.dto.trade.MarketOrder;
-import org.knowm.xchange.dto.trade.OpenOrders;
-import org.knowm.xchange.dto.trade.UserTrades;
+import org.knowm.xchange.dto.trade.*;
 import org.knowm.xchange.exceptions.FundsExceededException;
 import org.knowm.xchange.instrument.Instrument;
 import org.knowm.xchange.okex.OkexAdapters;
@@ -27,17 +17,23 @@ import org.knowm.xchange.okex.dto.trade.OkexCancelOrderRequest;
 import org.knowm.xchange.okex.dto.trade.OkexOrderDetails;
 import org.knowm.xchange.okex.dto.trade.OkexOrderResponse;
 import org.knowm.xchange.service.trade.TradeService;
-import org.knowm.xchange.service.trade.params.CancelOrderByIdParams;
-import org.knowm.xchange.service.trade.params.CancelOrderByInstrument;
-import org.knowm.xchange.service.trade.params.CancelOrderParams;
-import org.knowm.xchange.service.trade.params.TradeHistoryParamInstrument;
-import org.knowm.xchange.service.trade.params.TradeHistoryParams;
+import org.knowm.xchange.service.trade.params.*;
 import org.knowm.xchange.service.trade.params.orders.OpenOrdersParamInstrument;
 import org.knowm.xchange.service.trade.params.orders.OpenOrdersParams;
 import org.knowm.xchange.service.trade.params.orders.OrderQueryParamInstrument;
 import org.knowm.xchange.service.trade.params.orders.OrderQueryParams;
 
-/** Author: Max Gao (gaamox@tutanota.com) Created: 08-06-2021 */
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static org.knowm.xchange.okex.OkexAdapters.*;
+
+/**
+ * Author: Max Gao (gaamox@tutanota.com) Created: 08-06-2021
+ */
 public class OkexTradeService extends OkexTradeServiceRaw implements TradeService {
   public OkexTradeService(OkexExchange exchange, ResilienceRegistries resilienceRegistries) {
     super(exchange, resilienceRegistries);
@@ -119,7 +115,7 @@ public class OkexTradeService extends OkexTradeServiceRaw implements TradeServic
       String orderId = orderQueryParams.getOrderId();
 
       List<OkexOrderDetails> orderResults =
-          getOkexOrder(OkexAdapters.adaptInstrument(instrument), orderId).getData();
+              getOkexOrder(OkexAdapters.adaptInstrument(instrument), orderId).getData();
 
       if (!orderResults.isEmpty()) {
         result = OkexAdapters.adaptOrder(orderResults.get(0), exchange.getExchangeMetaData());
@@ -168,6 +164,21 @@ public class OkexTradeService extends OkexTradeServiceRaw implements TradeServic
       throw new OkexException(
           okexResponse.getData().get(0).getMessage(),
           Integer.parseInt(okexResponse.getData().get(0).getCode()));
+  }
+
+  @Override
+  public String placeStopOrder(StopOrder stopOrder) throws IOException {
+    OkexResponse<List<OkexOrderResponse>> okexResponse = placeOkexAlgoOrder(OkexAdapters.adaptOrder(stopOrder, exchange.getExchangeMetaData(), exchange.accountLevel));
+    if (okexResponse.isSuccess()) return okexResponse.getData().get(0).getAlgoOrderId();
+    else {
+      String message = okexResponse.getMsg();
+      int code = Integer.parseInt(okexResponse.getCode());
+      if (!okexResponse.getData().isEmpty()) {
+        message = okexResponse.getData().get(0).getMessage();
+        code = Integer.parseInt(okexResponse.getData().get(0).getCode());
+      }
+      throw new OkexException(message, code);
+    }
   }
 
   public List<String> placeLimitOrder(List<LimitOrder> limitOrders)
